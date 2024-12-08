@@ -1,6 +1,6 @@
 # Compiler and flags
 CC = cl
-CFLAGS = /Iinclude /EHsc /Zi
+CFLAGS = /Iinclude /EHsc
 # CFLAGS = /Iinclude /EHsc
 
 # Libraries
@@ -13,13 +13,31 @@ SRCS += $(wildcard include/*.c)
 # Output binary
 TARGET = systray.exe
 
+# Output directory for build files
+OUT_DIR = .\out
+
+# Object files
+OBJS = $(SRCS:%.c=$(OUT_DIR)/%.obj)
+
+# Force PowerShell usage
+SHELL = powershell.exe
+
 # Default rule
 all: $(TARGET)
 
 # Compile and link
-$(TARGET): $(SRCS)
-	$(CC) $(SRCS) $(CFLAGS) $(LIBS) /Fe:$(TARGET)
+$(TARGET): $(OBJS)
+	$(CC) $(OBJS) $(CFLAGS) $(LIBS) /Fe:$(TARGET)
+
+# Rule to create object files
+$(OUT_DIR)/%.obj: %.c
+	# Ensure output directories exist
+	@if (-not (Test-Path $(OUT_DIR))) { New-Item -ItemType Directory -Path $(OUT_DIR) }
+	@if (-not (Test-Path $(OUT_DIR)/include)) { New-Item -ItemType Directory -Path $(OUT_DIR)/include }
+	$(CC) /c $< $(CFLAGS) /Fo$@
 
 # Clean up
 clean:
-	del $(TARGET) *.obj
+	# Delete the output files and directory
+	@if (Test-Path $(TARGET)) { Remove-Item $(TARGET) }
+	@if (Test-Path $(OUT_DIR)) { Remove-Item -Recurse -Force $(OUT_DIR) }
