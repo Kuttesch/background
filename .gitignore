@@ -1,0 +1,18 @@
+# Ignore all compiler files
+*.o
+*.obj
+*.dll
+*.exe
+*.so
+*.dylib
+*.class
+*.pyc
+*.pyo
+*.out
+*.a
+*.lib
+*.ilk
+*.pdb
+
+# Ignore VS Code files
+.vscode
