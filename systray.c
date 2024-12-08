@@ -1,22 +1,31 @@
 #include <stdio.h>
 #include <windows.h>
 #include "background.h"
-// #include "globals.h"
+#include "ini.h"
+#include "log.h"
 
 // Global variables
 NOTIFYICONDATA notifData;
 HINSTANCE hInstance;
 HWND hiddenWindow;
 
+// Constants
+#define CONFIG_PATH "./config.ini"
+#define MAX_VALUE_LENGTH 128
+
 int backgroundState = 0;
 int sleepTime = 0;
 
-int fromTime = 6;
-int toTime = 18;
+char nightPath[MAX_VALUE_LENGTH];
+char dayPath[MAX_VALUE_LENGTH];
+int fromTime, toTime;
 
-char *nightPath = "./img/night.jpg";
-char *dayPath = "./img/day.jpg";
-
+// Function declarations
+int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow);
+LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM lParam);
+// int initConfig(char *nightPath, char *dayPath, int *fromTime, int *toTime);
+// int readConfig(char *configPath, const char *section, const char *key, char *value);
+int makeAbsoluteChar(char *relativePath, char *absolutePath);
 
 // Message handler for the window
 LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -30,8 +39,8 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
             if (lParam == WM_RBUTTONDOWN) {
                 // Create a context menu
                 HMENU hMenu = CreatePopupMenu();
+                AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
                 AppendMenu(hMenu, MF_STRING, 1, TEXT("Exit"));
-                AppendMenu(hMenu, MF_STRING, 2, TEXT("Hallo"));
 
                 POINT pt;
                 GetCursorPos(&pt);
@@ -40,17 +49,15 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
                 DestroyMenu(hMenu);
             } else if (lParam == WM_LBUTTONDOWN) {
                 // Handle left-click (e.g., show a message box)
-                TCHAR buffer[256];
-                MessageBox(hiddenWindow, buffer, TEXT("Info"), MB_OK | MB_ICONINFORMATION);
+                initConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime);
+                changeBackground(&nightPath, &dayPath, &backgroundState, &fromTime, &toTime);
+                debug("changeBackground");
             }
             return 0;
 
         case WM_COMMAND:
             if (LOWORD(wParam) == 1) { // Exit menu item ID
                 PostQuitMessage(0); // Exit application
-            } else if(LOWORD(wParam) == 2) {
-                printf("changeBackground");
-                changeBackground(nightPath, dayPath, &backgroundState, &fromTime, &toTime);
             }
             
             return 0;
@@ -59,8 +66,78 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
     return DefWindowProc(hiddenWindow, uMsg, wParam, lParam);
 }
 
+int initConfig(char *configPath, char *nightPath, char *dayPath, int *fromTime, int *toTime) {
+
+    const char *pathSection = "Path";
+    const char *pathKeys[] = {"NIGHT", "DAY"};
+
+    const char *timeSection = "Time";
+    const char *timeKeys[] = {"FROM", "TO"};
+
+    // Read paths (NIGHT, DAY)
+    for (int i = 0; i < sizeof(pathKeys) / sizeof(pathKeys[0]); i++) {
+        char value[MAX_VALUE_LENGTH];
+        if (readIniValue(configPath, pathSection, pathKeys[i], value) != 0) {
+            error("Failure reading path");
+            return 1;
+        }
+        if (i == 0) {
+            strcpy(nightPath, value);
+            debug("nightPath: %s", nightPath);
+        } else {
+            strcpy(dayPath, value);
+            debug("dayPath: %s", dayPath);
+        }
+    }
+
+    // Read times (FROM, TO)
+    for (int i = 0; i < sizeof(timeKeys) / sizeof(timeKeys[0]); i++) {
+        char value[MAX_VALUE_LENGTH];
+        if (readIniValue(configPath, timeSection, timeKeys[i], value) != 0) {
+            error("Failure reading time");
+            return 1;
+        }
+        if (i == 0) {
+            *fromTime = atoi(value);  // Convert value to integer
+            debug("fromTime: %d", *fromTime);
+        } else {
+            *toTime = atoi(value);    // Convert value to integer
+            debug("toTime: %d", *toTime);
+        }
+    }
+
+    return 0;
+}
+
+int makeAbsoluteChar(char *relativePath, char *absolutePath) {
+    if (!GetFullPathNameA(relativePath, MAX_PATH, absolutePath, NULL)) {
+        error("Failiure converting to absolute path: %ld", GetLastError());
+        return 1;
+    }
+    return 0;
+}
+
+
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
     hInstance = hInst;
+
+    int *backgroundStatePtr = &backgroundState;
+
+
+    char configPath[MAX_PATH] = CONFIG_PATH;  // Corrected configPath initialization
+
+    if (makeAbsoluteChar(configPath, configPath) != 0) {
+        error("Failure converting config path to absolute");
+        return 1;
+    }
+
+    // if (initConfig(configPath, nightPath, dayPath, &fromTime, &toTime) != 0) {
+    //     printf("Failed to initialize config.\n");
+    //     return 1;
+    // } else {
+    //     info("Configuration read successfully");
+    // }
+
 
     // Register window class
     WNDCLASS wc = { 0 };
