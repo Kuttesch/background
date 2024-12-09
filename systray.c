@@ -3,6 +3,7 @@
 #include "background.h"
 #include "ini.h"
 #include "log.h"
+#include <stdbool.h>
 
 // Global variables
 NOTIFYICONDATA notifData;
@@ -13,8 +14,10 @@ HWND hiddenWindow;
 #define CONFIG_PATH "./config.ini"
 #define MAX_VALUE_LENGTH 128
 
+volatile bool stopThread = false; // Signal to stop the thread
+
 int backgroundState = 0;
-int sleepTime = 0;
+int sleepTime = 30;
 
 char nightPath[MAX_VALUE_LENGTH];
 char dayPath[MAX_VALUE_LENGTH];
@@ -49,7 +52,11 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
                 DestroyMenu(hMenu);
             } else if (lParam == WM_LBUTTONDOWN) {
                 // Handle left-click (e.g., show a message box)
-                initConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime);
+                if (initConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime) != 0) {
+                    error("Failure initializing config");
+                    return 1;
+                    return 0;
+                }
                 changeBackground(&nightPath, &dayPath, &backgroundState, &fromTime, &toTime);
                 debug("changeBackground");
             }
@@ -57,10 +64,11 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
 
         case WM_COMMAND:
             if (LOWORD(wParam) == 1) { // Exit menu item ID
-                PostQuitMessage(0); // Exit application
+                stopThread = true;       // Signal the thread to stop
+                PostQuitMessage(0);      // Exit the message loop
             }
-            
             return 0;
+
 
     }
     return DefWindowProc(hiddenWindow, uMsg, wParam, lParam);
@@ -117,6 +125,28 @@ int makeAbsoluteChar(char *relativePath, char *absolutePath) {
     return 0;
 }
 
+int programLoop() {
+    if (initConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime) != 0) {
+        error("Failure initializing config");
+        return 1;
+    }
+    changeBackground(&nightPath, &dayPath, &backgroundState, &fromTime, &toTime);
+    debug("changeBackground");
+    // Sleep(sleepTime * 1000 * 60);
+    Sleep(1000);
+    return 0;
+}
+
+DWORD WINAPI ProgramLoopThread(LPVOID lpParam) {
+    while (!stopThread) { // Continue running until stopThread is set to true
+        if (programLoop() != 0) {
+            error("Program loop encountered an error");
+            break; // Exit the loop on error
+        }
+        Sleep(10); // Add a small delay to avoid busy-waiting
+    }
+    return 0;
+}
 
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
     hInstance = hInst;
@@ -124,20 +154,17 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
     int *backgroundStatePtr = &backgroundState;
 
 
-    char configPath[MAX_PATH] = CONFIG_PATH;  // Corrected configPath initialization
+    char configPath[MAX_PATH] = CONFIG_PATH;
+
+    if (initConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime) != 0) {
+        error("Failure initializing config");
+        return 1;
+    }
 
     if (makeAbsoluteChar(configPath, configPath) != 0) {
         error("Failure converting config path to absolute");
         return 1;
     }
-
-    // if (initConfig(configPath, nightPath, dayPath, &fromTime, &toTime) != 0) {
-    //     printf("Failed to initialize config.\n");
-    //     return 1;
-    // } else {
-    //     info("Configuration read successfully");
-    // }
-
 
     // Register window class
     WNDCLASS wc = { 0 };
@@ -160,6 +187,13 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
     lstrcpy(notifData.szTip, TEXT("Background"));
     Shell_NotifyIcon(NIM_ADD, &notifData);
 
+    // Create a thread for the program loop
+    HANDLE hThread = CreateThread(NULL, 0, ProgramLoopThread, NULL, 0, NULL);
+    if (hThread == NULL) {
+        error("Failed to create thread for program loop");
+        return 1;
+    }
+
     // Message loop
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {
@@ -167,7 +201,13 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
         DispatchMessage(&msg);
     }
 
+    // Signal the thread to stop and wait for it to finish
+    stopThread = true;
+    WaitForSingleObject(hThread, INFINITE);
+    CloseHandle(hThread);
+
     // Cleanup
     Shell_NotifyIcon(NIM_DELETE, &notifData);
     return 0;
+
 }
