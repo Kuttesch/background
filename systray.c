@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <windows.h>
 #include "background.h"
+#include <stdbool.h>
+#include <shlwapi.h>
 #include "ini.h"
 #include "log.h"
-#include <stdbool.h>
 
 // Global variables
 NOTIFYICONDATA notifData;
@@ -28,7 +29,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM lParam);
 // int initConfig(char *nightPath, char *dayPath, int *fromTime, int *toTime);
 // int readConfig(char *configPath, const char *section, const char *key, char *value);
-int makeAbsoluteChar(char *relativePath, char *absolutePath);
+int makeAbsolutePath(char *relativePath, char *absolutePath);
 
 // Message handler for the window
 LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -102,6 +103,9 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
                         AppendMenu(hTimeMenuNight, MF_STRING, 224, TEXT("24"));
 
                 AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
+                // AppendMenu(hMenu, MF_STRING, 3, TEXT("Config"));
+                // AppendMenu(hMenu, MF_POPUP, 2, TEXT("Images"));
+                AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
                 AppendMenu(hMenu, MF_STRING, 1, TEXT("Exit"));
 
                 POINT pt;
@@ -125,7 +129,22 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
             if (LOWORD(wParam) == 1) { // Exit menu item ID
                 stopThread = true;       // Signal the thread to stop
                 PostQuitMessage(0);      // Exit the message loop
-            } else if (LOWORD(wParam) >= 100 && LOWORD(wParam) <= 124) {
+            // } else if (LOWORD(wParam) == 2) {
+            //     char absolutePath[MAX_PATH];
+            //     readIniValue(CONFIG_PATH, "Path", "NIGHT", nightPath);
+            //     makeAbsolutePath(nightPath, absolutePath);
+            //     char parentDir[MAX_PATH];
+            //     strcpy_s(parentDir, sizeof(parentDir), absolutePath);
+            //     PathRemoveFileSpec(parentDir);
+            //     ShellExecute(NULL, "open", parentDir, NULL, NULL, SW_SHOWNORMAL);
+            // } else if (LOWORD(wParam) == 3) {
+            //     char absolutePath[MAX_PATH];
+            //     makeAbsolutePath(CONFIG_PATH, absolutePath);
+            //     char parentDir[MAX_PATH];
+            //     strcpy_s(parentDir, sizeof(parentDir), absolutePath);
+            //     PathRemoveFileSpec(parentDir);
+            //     ShellExecute(NULL, "open", parentDir, NULL, NULL, SW_SHOWNORMAL);
+            }else if (LOWORD(wParam) >= 100 && LOWORD(wParam) <= 124) {
                 int param = LOWORD(wParam) - 100;
                 info("Selected Day Time: %d", param);
                 char value[MAX_VALUE_LENGTH];
@@ -191,7 +210,7 @@ int initConfig(char *configPath, char *nightPath, char *dayPath, int *fromTime, 
     return 0;
 }
 
-int makeAbsoluteChar(char *relativePath, char *absolutePath) {
+int makeAbsolutePath(char *relativePath, char *absolutePath) {
     if (!GetFullPathNameA(relativePath, MAX_PATH, absolutePath, NULL)) {
         error("Failiure converting to absolute path: %ld", GetLastError());
         return 1;
@@ -211,6 +230,36 @@ int programLoop() {
     return 0;
 }
 
+int checkIfConfig(char *configPath) {
+    FILE *file = fopen(configPath, "r");
+    if (file == NULL) {
+        if(createConfig(configPath) != 0) {
+            error("Failed to create config file");
+            return 1;
+        } else {
+            checkIfConfig(configPath);
+        }
+    }
+    fclose(file);
+    return 0;
+
+}
+
+int createConfig(char *configPath) {
+    FILE *file = fopen(configPath, "w");
+    if (file == NULL) {
+        error("Failed to create config file");
+        return 1;
+    }
+    fclose(file);
+    writeIniValue(configPath, "Path", "NIGHT", ".img\night.jpg");
+    writeIniValue(configPath, "Path", "DAY", ".img\day.jpg");
+    writeIniValue(configPath, "Time", "FROM", "0");
+    writeIniValue(configPath, "Time", "TO", "24");
+    MessageBox(NULL, TEXT("Please fill out your created config file!"), TEXT("Info"), MB_OK | MB_ICONINFORMATION);
+    return 0;
+}
+
 DWORD WINAPI ProgramLoopThread(LPVOID lpParam) {
     while (!stopThread) { // Continue running until stopThread is set to true
         if (programLoop() != 0) {
@@ -226,6 +275,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
     hInstance = hInst;
 
     // setLogLevel("INFO");
+    checkIfConfig(CONFIG_PATH);
 
     int *backgroundStatePtr = &backgroundState;
 
@@ -237,7 +287,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
         return 1;
     }
 
-    if (makeAbsoluteChar(configPath, configPath) != 0) {
+    if (makeAbsolutePath(configPath, configPath) != 0) {
         error("Failure converting config path to absolute");
         return 1;
     }
