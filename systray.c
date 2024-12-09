@@ -42,6 +42,65 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
             if (lParam == WM_RBUTTONDOWN) {
                 // Create a context menu
                 HMENU hMenu = CreatePopupMenu();
+                HMENU hSettingsMenu = CreatePopupMenu();
+                HMENU hTimeMenuDay = CreatePopupMenu();
+                HMENU hTimeMenuNight = CreatePopupMenu();
+
+
+                AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hSettingsMenu, TEXT("Settings"));
+                    AppendMenu(hSettingsMenu, MF_POPUP, (UINT_PTR)hTimeMenuDay, TEXT("Set Day Time"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 100, TEXT("0"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 101, TEXT("1"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 102, TEXT("2"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 103, TEXT("3"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 104, TEXT("4"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 105, TEXT("5"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 106, TEXT("6"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 107, TEXT("7"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 108, TEXT("8"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 109, TEXT("9"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 110, TEXT("10"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 111, TEXT("11"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 112, TEXT("12"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 113, TEXT("13"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 114, TEXT("14"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 115, TEXT("15"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 116, TEXT("16"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 117, TEXT("17"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 118, TEXT("18"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 119, TEXT("19"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 120, TEXT("20"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 121, TEXT("21"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 122, TEXT("22"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 123, TEXT("23"));
+                        AppendMenu(hTimeMenuDay, MF_STRING, 124, TEXT("24"));
+                    AppendMenu(hSettingsMenu, MF_POPUP, (UINT_PTR)hTimeMenuNight, TEXT("Set Night Time"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 200, TEXT("0"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 201, TEXT("1"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 202, TEXT("2"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 203, TEXT("3"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 204, TEXT("4"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 205, TEXT("5"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 206, TEXT("6"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 207, TEXT("7"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 208, TEXT("8"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 209, TEXT("9"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 210, TEXT("10"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 211, TEXT("11"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 212, TEXT("12"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 213, TEXT("13"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 214, TEXT("14"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 215, TEXT("15"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 216, TEXT("16"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 217, TEXT("17"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 218, TEXT("18"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 219, TEXT("19"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 220, TEXT("20"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 221, TEXT("21"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 222, TEXT("22"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 223, TEXT("23"));
+                        AppendMenu(hTimeMenuNight, MF_STRING, 224, TEXT("24"));
+
                 AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
                 AppendMenu(hMenu, MF_STRING, 1, TEXT("Exit"));
 
@@ -52,22 +111,37 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
                 DestroyMenu(hMenu);
             } else if (lParam == WM_LBUTTONDOWN) {
                 // Handle left-click (e.g., show a message box)
-                if (initConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime) != 0) {
-                    error("Failure initializing config");
-                    return 1;
-                    return 0;
-                }
-                changeBackground(&nightPath, &dayPath, &backgroundState, &fromTime, &toTime);
-                debug("changeBackground");
+                // if (initConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime) != 0) {
+                //     error("Failure initializing config");
+                //     return 1;
+                // }
+                // changeBackground(&nightPath, &dayPath, &backgroundState, &fromTime, &toTime);
+                // debug("changeBackground");
             }
             return 0;
 
         case WM_COMMAND:
+            stopThread = true;
             if (LOWORD(wParam) == 1) { // Exit menu item ID
                 stopThread = true;       // Signal the thread to stop
                 PostQuitMessage(0);      // Exit the message loop
+            } else if (LOWORD(wParam) >= 100 && LOWORD(wParam) <= 124) {
+                int param = LOWORD(wParam) - 100;
+                info("Selected Day Time: %d", param);
+                char value[MAX_VALUE_LENGTH];
+                snprintf (value, sizeof(value), "%d", param);
+                writeIniValue(CONFIG_PATH, "Time", "FROM", value);
+                stopThread = false;
+            } else if (LOWORD(wParam) >= 200 && LOWORD(wParam) <= 224) {
+                int param = LOWORD(wParam) - 200;
+                info("Selected Night Time: %d", param);
+                char value[MAX_VALUE_LENGTH];
+                snprintf (value, sizeof(value), "%d", param);
+                writeIniValue(CONFIG_PATH, "Time", "TO", value);
+                stopThread = false;
             }
             return 0;
+
 
 
     }
@@ -150,6 +224,8 @@ DWORD WINAPI ProgramLoopThread(LPVOID lpParam) {
 
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
     hInstance = hInst;
+
+    // setLogLevel("INFO");
 
     int *backgroundStatePtr = &backgroundState;
 
