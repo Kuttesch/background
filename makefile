@@ -4,7 +4,7 @@ CFLAGS = /Iinclude /EHsc
 # CFLAGS = /Iinclude /EHsc
 
 # Libraries
-LIBS = user32.lib shell32.lib gdi32.lib
+LIBS = user32.lib shell32.lib gdi32.lib -lshlwapi
 
 # Source files
 SRCS = systray.c
