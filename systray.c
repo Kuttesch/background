@@ -2,7 +2,7 @@
 #include <windows.h>
 #include "background.h"
 #include <stdbool.h>
-#include <shlwapi.h>
+#include "resource.h"
 #include "ini.h"
 #include "log.h"
 
@@ -11,9 +11,13 @@ NOTIFYICONDATA notifData;
 HINSTANCE hInstance;
 HWND hiddenWindow;
 
+
 // Constants
 #define CONFIG_PATH "./config.ini"
 #define MAX_VALUE_LENGTH 128
+#define ANIMATION_FRAMES 21
+
+HICON animationIcons[ANIMATION_FRAMES];
 
 volatile bool stopThread = false; // Signal to stop the thread
 
@@ -24,11 +28,18 @@ char nightPath[MAX_VALUE_LENGTH];
 char dayPath[MAX_VALUE_LENGTH];
 int fromTime, toTime;
 
+int currentFrame = 0;
+
+volatile bool day2Night = true;
+
+void loadAnimationIcons();
+void cleanupAnimationIcons();
+void animateIcon(bool dayToNight);
+int changeBackgroundWrapper();
+
 // Function declarations
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow);
 LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM lParam);
-// int initConfig(char *nightPath, char *dayPath, int *fromTime, int *toTime);
-// int readConfig(char *configPath, const char *section, const char *key, char *value);
 int makeAbsolutePath(char *relativePath, char *absolutePath);
 
 // Message handler for the window
@@ -41,7 +52,6 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
 
         case WM_USER + 1: // Custom message for tray icon
             if (lParam == WM_RBUTTONDOWN) {
-                // Create a context menu
                 HMENU hMenu = CreatePopupMenu();
                 HMENU hSettingsMenu = CreatePopupMenu();
                 HMENU hTimeMenuDay = CreatePopupMenu();
@@ -103,8 +113,6 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
                         AppendMenu(hTimeMenuNight, MF_STRING, 224, TEXT("24"));
 
                 AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
-                // AppendMenu(hMenu, MF_STRING, 3, TEXT("Config"));
-                // AppendMenu(hMenu, MF_POPUP, 2, TEXT("Images"));
                 AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
                 AppendMenu(hMenu, MF_STRING, 1, TEXT("Exit"));
 
@@ -114,13 +122,6 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
                 TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hiddenWindow, NULL);
                 DestroyMenu(hMenu);
             } else if (lParam == WM_LBUTTONDOWN) {
-                // Handle left-click (e.g., show a message box)
-                // if (initConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime) != 0) {
-                //     error("Failure initializing config");
-                //     return 1;
-                // }
-                // changeBackground(&nightPath, &dayPath, &backgroundState, &fromTime, &toTime);
-                // debug("changeBackground");
             }
             return 0;
 
@@ -129,21 +130,7 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
             if (LOWORD(wParam) == 1) { // Exit menu item ID
                 stopThread = true;       // Signal the thread to stop
                 PostQuitMessage(0);      // Exit the message loop
-            // } else if (LOWORD(wParam) == 2) {
-            //     char absolutePath[MAX_PATH];
-            //     readIniValue(CONFIG_PATH, "Path", "NIGHT", nightPath);
-            //     makeAbsolutePath(nightPath, absolutePath);
-            //     char parentDir[MAX_PATH];
-            //     strcpy_s(parentDir, sizeof(parentDir), absolutePath);
-            //     PathRemoveFileSpec(parentDir);
-            //     ShellExecute(NULL, "open", parentDir, NULL, NULL, SW_SHOWNORMAL);
-            // } else if (LOWORD(wParam) == 3) {
-            //     char absolutePath[MAX_PATH];
-            //     makeAbsolutePath(CONFIG_PATH, absolutePath);
-            //     char parentDir[MAX_PATH];
-            //     strcpy_s(parentDir, sizeof(parentDir), absolutePath);
-            //     PathRemoveFileSpec(parentDir);
-            //     ShellExecute(NULL, "open", parentDir, NULL, NULL, SW_SHOWNORMAL);
+
             }else if (LOWORD(wParam) >= 100 && LOWORD(wParam) <= 124) {
                 int param = LOWORD(wParam) - 100;
                 info("Selected Day Time: %d", param);
@@ -175,7 +162,6 @@ int initConfig(char *configPath, char *nightPath, char *dayPath, int *fromTime, 
     const char *timeSection = "Time";
     const char *timeKeys[] = {"FROM", "TO"};
 
-    // Read paths (NIGHT, DAY)
     for (int i = 0; i < sizeof(pathKeys) / sizeof(pathKeys[0]); i++) {
         char value[MAX_VALUE_LENGTH];
         if (readIniValue(configPath, pathSection, pathKeys[i], value) != 0) {
@@ -191,7 +177,6 @@ int initConfig(char *configPath, char *nightPath, char *dayPath, int *fromTime, 
         }
     }
 
-    // Read times (FROM, TO)
     for (int i = 0; i < sizeof(timeKeys) / sizeof(timeKeys[0]); i++) {
         char value[MAX_VALUE_LENGTH];
         if (readIniValue(configPath, timeSection, timeKeys[i], value) != 0) {
@@ -219,14 +204,28 @@ int makeAbsolutePath(char *relativePath, char *absolutePath) {
 }
 
 int programLoop() {
+    
+    changeBackgroundWrapper();
+    debug("changeBackground");
+    Sleep(1000);
+    return 0;
+}
+
+int changeBackgroundWrapper() {
+    int initialBackgroundState = backgroundState;
+
     if (initConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime) != 0) {
         error("Failure initializing config");
         return 1;
     }
-    changeBackground(&nightPath, &dayPath, &backgroundState, &fromTime, &toTime);
-    debug("changeBackground");
-    // Sleep(sleepTime * 1000 * 60);
-    Sleep(1000);
+    getTime(&backgroundState, &fromTime, &toTime);
+    if (backgroundState == 1 && initialBackgroundState == 0) {
+        changeBackground(&nightPath, &dayPath, &backgroundState, &fromTime, &toTime);
+        animateIcon(true);
+    } else if (backgroundState == 0 && initialBackgroundState == 1 ) {
+        changeBackground(&nightPath, &dayPath, &backgroundState, &fromTime, &toTime);
+        animateIcon(false);
+    }
     return 0;
 }
 
@@ -260,6 +259,69 @@ int createConfig(char *configPath) {
     return 0;
 }
 
+void loadAnimationIcons() {
+    int iconIds[ANIMATION_FRAMES] = {
+        ANIMATION0, ANIMATION1, ANIMATION2, ANIMATION3, ANIMATION4,
+        ANIMATION5, ANIMATION6, ANIMATION7, ANIMATION8, ANIMATION9,
+        ANIMATION10, ANIMATION11, ANIMATION12, ANIMATION13, ANIMATION14,
+        ANIMATION15, ANIMATION16, ANIMATION17, ANIMATION18, ANIMATION19, ANIMATION20
+    };
+
+    for (int i = 0; i < ANIMATION_FRAMES; i++) {
+        animationIcons[i] = LoadIcon(hInstance, MAKEINTRESOURCE(iconIds[i]));
+        if (animationIcons[i] == NULL) {
+            error("Failed to load icon frame: %d", iconIds[i]);
+        }
+    }
+}
+
+void cleanupAnimationIcons() {
+    for (int i = 0; i < ANIMATION_FRAMES; i++) {
+        if (animationIcons[i] != NULL) {
+            DestroyIcon(animationIcons[i]);
+        }
+    }
+}
+
+void animateIcon(bool dayToNight) {
+    if (dayToNight) {
+        for (int i = ANIMATION_FRAMES - 1; i >= 0; i--) {
+            notifData.hIcon = animationIcons[i];
+            Shell_NotifyIcon(NIM_MODIFY, &notifData);
+            Sleep(10);
+        }
+    } else {
+        for (int i = 0; i < ANIMATION_FRAMES; i++) {
+            notifData.hIcon = animationIcons[i];
+            Shell_NotifyIcon(NIM_MODIFY, &notifData);
+            Sleep(10);
+        }
+    }
+}
+
+int initialzeAnimation () {
+    getTime(&backgroundState, &fromTime, &toTime);
+    if (backgroundState == 1) {
+        notifData.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ANIMATION0));
+        if (notifData.hIcon == NULL) {
+            error("Failed to load tray icon");
+            return 1;
+        }
+        Shell_NotifyIcon(NIM_ADD, &notifData);
+    } else if (backgroundState == 0) {
+        notifData.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ANIMATION20));
+        if (notifData.hIcon == NULL) {
+            error("Failed to load tray icon");
+            return 1;
+        }
+        Shell_NotifyIcon(NIM_ADD, &notifData);
+    } else {
+        error("Invalid background state");
+        return 1;
+    }
+    return 0;
+}
+
 DWORD WINAPI ProgramLoopThread(LPVOID lpParam) {
     while (!stopThread) { // Continue running until stopThread is set to true
         if (programLoop() != 0) {
@@ -274,8 +336,8 @@ DWORD WINAPI ProgramLoopThread(LPVOID lpParam) {
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
     hInstance = hInst;
 
-    // setLogLevel("INFO");
     checkIfConfig(CONFIG_PATH);
+    loadAnimationIcons();
 
     int *backgroundStatePtr = &backgroundState;
 
@@ -300,20 +362,31 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
     RegisterClass(&wc);
 
     // Create a hidden window
-    hiddenWindow = CreateWindow(wc.lpszClassName, TEXT("TrayApp"), 0, 0, 0, 0, 0, NULL, NULL, hInst, NULL);
+    hiddenWindow = CreateWindow(wc.lpszClassName, TEXT("Background"), 0, 0, 0, 0, 0, NULL, NULL, hInst, NULL);
 
     // Add icon to the system tray
     ZeroMemory(&notifData, sizeof(NOTIFYICONDATA));
     notifData.cbSize = sizeof(NOTIFYICONDATA);
     notifData.hWnd = hiddenWindow;
-    notifData.uID = 1;
-    notifData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
-    notifData.uCallbackMessage = WM_USER + 1; // Custom message for tray icon events
-    notifData.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-    lstrcpy(notifData.szTip, TEXT("Background"));
-    Shell_NotifyIcon(NIM_ADD, &notifData);
 
-    // Create a thread for the program loop
+ 
+    notifData.uID = ANIMATION0;
+    notifData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+    notifData.uCallbackMessage = WM_USER + 1;
+
+    // notifData.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ANIMATION0));
+
+    // if (!notifData.hIcon) {
+    //     error("Failed to load tray icon");
+    //     return 1;
+    // }
+
+    wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ICON_ID));
+    lstrcpy(notifData.szTip, TEXT("Background"));
+    initialzeAnimation();
+    // initialzeAnimation(day2Night);
+    // Shell_NotifyIcon(NIM_ADD, &notifData);
+
     HANDLE hThread = CreateThread(NULL, 0, ProgramLoopThread, NULL, 0, NULL);
     if (hThread == NULL) {
         error("Failed to create thread for program loop");
