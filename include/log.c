@@ -6,7 +6,7 @@
 #define MAX_LOG_MSG 1024
 
 char *logPath = "general.log";
-int logLevel = 2;  // 2: DEBUG, 1: INFO, 0: ERROR
+int logLevel = 1;  // 3: DEBUG, 2: INFO, 1: ERROR, 0: NONE
 
 // Function to get the current time in a formatted string
 int getCurrentTime(char *buffer, size_t bufferSize) {
@@ -47,7 +47,7 @@ int logWithLevel(const char *level, const char *format, ...) {
 
 // Debug log
 int debug(const char *format, ...) {
-    if (logLevel >= 2) {
+    if (logLevel >= 3) {
         va_list args;
         va_start(args, format);
         char logMsg[MAX_LOG_MSG];
@@ -60,7 +60,7 @@ int debug(const char *format, ...) {
 
 // Info log
 int info(const char *format, ...) {
-    if (logLevel >= 1) {
+    if (logLevel >= 2) {
         va_list args;
         va_start(args, format);
         char logMsg[MAX_LOG_MSG];
@@ -73,7 +73,7 @@ int info(const char *format, ...) {
 
 // Error log
 int error(const char *format, ...) {
-    if (logLevel >= 0) {
+    if (logLevel >= 1) {
         va_list args;
         va_start(args, format);
         char logMsg[MAX_LOG_MSG];
