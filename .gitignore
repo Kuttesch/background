@@ -13,6 +13,13 @@
 *.lib
 *.ilk
 *.pdb
+/out
 
 # Ignore VS Code files
 .vscode
+
+# Ignore log files etc.
+*.log
+
+#Ignore Pictures
+/img
