@@ -171,10 +171,10 @@ int initConfig(char *configPath, char *nightPath, char *dayPath, int *fromTime, 
         }
         if (i == 0) {
             strcpy(nightPath, value);
-            debug("nightPath: %s", nightPath);
+            // debug("nightPath: %s", nightPath);
         } else {
             strcpy(dayPath, value);
-            debug("dayPath: %s", dayPath);
+            // debug("dayPath: %s", dayPath);
         }
     }
 
@@ -186,10 +186,10 @@ int initConfig(char *configPath, char *nightPath, char *dayPath, int *fromTime, 
         }
         if (i == 0) {
             *fromTime = atoi(value);  // Convert value to integer
-            debug("fromTime: %d", *fromTime);
+            // debug("fromTime: %d", *fromTime);
         } else {
             *toTime = atoi(value);    // Convert value to integer
-            debug("toTime: %d", *toTime);
+            // debug("toTime: %d", *toTime);
         }
     }
 
@@ -207,7 +207,7 @@ int makeAbsolutePath(char *relativePath, char *absolutePath) {
 int programLoop() {
     
     changeBackgroundWrapper();
-    debug("changeBackground");
+    // debug("changeBackground");
     Sleep(1000);
     return 0;
 }
