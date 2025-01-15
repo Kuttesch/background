@@ -41,6 +41,7 @@ int changeBackgroundWrapper();
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow);
 LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM lParam);
 int makeAbsolutePath(char *relativePath, char *absolutePath);
+int createConfig(char *configPath);
 
 // Message handler for the window
 LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM lParam) {
