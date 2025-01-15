@@ -47,7 +47,7 @@ int getTime(int *backgroundStatePtr, int *fromTimePtr, int *toTimePtr) {
             *backgroundStatePtr = 1;
         }
     } else {
-        debug("Invalid time");
+        error("Invalid time");
         return 1;
     }
     return 0;
