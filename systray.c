@@ -324,6 +324,13 @@ int initialzeAnimation () {
     return 0;
 }
 
+int initializeMain() {
+    initialzeAnimation();
+    getTime(&backgroundState, &fromTime, &toTime);
+    changeBackground(nightPath, dayPath, &backgroundState, &fromTime, &toTime);
+    return 0;
+}
+
 DWORD WINAPI ProgramLoopThread(LPVOID lpParam) {
     while (!stopThread) { // Continue running until stopThread is set to true
         if (programLoop() != 0) {
@@ -385,7 +392,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 
     wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ICON_ID));
     lstrcpy(notifData.szTip, TEXT("Background"));
-    initialzeAnimation();
+    if (initializeMain() != 0) {
+        error("Failiure Initializing!");
+        return 1;
+    }
+
     // initialzeAnimation(day2Night);
     // Shell_NotifyIcon(NIM_ADD, &notifData);
 
