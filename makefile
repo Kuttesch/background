@@ -16,7 +16,7 @@ ISRCS = .\install\installer.iss
 RES = include/resource.rc
 
 # Output binary
-TARGET = BackgroundSystray.exe
+TARGET = WallCycle.exe
 
 # Output directory for build files
 OUT_DIR = .\out
@@ -63,7 +63,7 @@ installer:
 
 copy:
 	@if (-not (Test-Path $(RELEASE_DIR))) { New-Item -ItemType Directory -Path $(RELEASE_DIR) }
-	Copy-Item .\BackgroundSystray.exe $(RELEASE_DIR)
+	Copy-Item .\WallCycle.exe $(RELEASE_DIR)
 	Copy-Item .\config.ini $(RELEASE_DIR)
 	Copy-Item .\README.md $(RELEASE_DIR)
 

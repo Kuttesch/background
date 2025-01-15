@@ -336,11 +336,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
     WNDCLASS wc = { 0 };
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInst;
-    wc.lpszClassName = TEXT("TrayApp");
+    wc.lpszClassName = TEXT("WallCycle");
     RegisterClass(&wc);
 
     // Create a hidden window
-    hiddenWindow = CreateWindow(wc.lpszClassName, TEXT("Background"), 0, 0, 0, 0, 0, NULL, NULL, hInst, NULL);
+    hiddenWindow = CreateWindow(wc.lpszClassName, TEXT("WallCycle"), 0, 0, 0, 0, 0, NULL, NULL, hInst, NULL);
 
     // Add icon to the system tray
     ZeroMemory(&notifData, sizeof(NOTIFYICONDATA));
