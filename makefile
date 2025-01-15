@@ -26,7 +26,7 @@ OBJS = $(SRCS:%.c=$(OUT_DIR)/%.obj)
 RES_OBJ = $(OUT_DIR)/resource.res
 
 # Force PowerShell usage
-SHELL = .\powershell.exe
+SHELL = powershell.exe
 
 #release directory
 RELEASE_DIR = .\release\src
