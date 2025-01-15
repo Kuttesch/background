@@ -16,6 +16,8 @@ HWND hiddenWindow;
 #define CONFIG_PATH "./config.ini"
 #define MAX_VALUE_LENGTH 128
 #define ANIMATION_FRAMES 21
+#define NIGHT 1
+#define DAY 0
 
 HICON animationIcons[ANIMATION_FRAMES];
 
