@@ -220,11 +220,12 @@ int changeBackgroundWrapper() {
         return 1;
     }
     getTime(&backgroundState, &fromTime, &toTime);
+    debug("backgroundState: %d", backgroundState);
     if (backgroundState == 1 && initialBackgroundState == 0) {
-        changeBackground(&nightPath, &dayPath, &backgroundState, &fromTime, &toTime);
+        changeBackground(nightPath, dayPath, &backgroundState, &fromTime, &toTime);
         animateIcon(true);
     } else if (backgroundState == 0 && initialBackgroundState == 1 ) {
-        changeBackground(&nightPath, &dayPath, &backgroundState, &fromTime, &toTime);
+        changeBackground(nightPath, dayPath, &backgroundState, &fromTime, &toTime);
         animateIcon(false);
     }
     return 0;
@@ -387,6 +388,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
     initialzeAnimation();
     // initialzeAnimation(day2Night);
     // Shell_NotifyIcon(NIM_ADD, &notifData);
+
+    changeBackground(nightPath, dayPath, &backgroundState, &fromTime, &toTime);
 
     HANDLE hThread = CreateThread(NULL, 0, ProgramLoopThread, NULL, 0, NULL);
     if (hThread == NULL) {
