@@ -23,3 +23,6 @@
 
 #Ignore Pictures
 /img
+
+#Igonre Release
+/release
