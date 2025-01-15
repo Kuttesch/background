@@ -70,16 +70,8 @@ copy:
 	@if (-not (Test-Path $(RELEASE_DIR)\img)) { New-Item -ItemType Directory -Path $(RELEASE_DIR)\img }
 	Copy-Item -Recurse .\img\* $(RELEASE_DIR)\img\
 
-release: 
-	@echo "Starting release process..."
-	@echo "Compiling..."
-	all
-	@echo "Copying files..."
-	copy
-	@echo "Creating installer..."
-	installer
-	@echo "Finished release process."
+release: all copy installer
 
-release-clean:
-	# Delete the output files and directory
+
+release-clean: clean
 	@if (Test-Path $(RELEASE_DIR)) { Remove-Item -Recurse -Force $(RELEASE_DIR) }
