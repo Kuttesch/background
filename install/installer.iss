@@ -33,8 +33,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "D:\Repos\background\out{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\Repos\background\releaseconfig.ini"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\Repos\background\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\Repos\background\config.ini"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\Repos\background\img\*"; DestDir: "{app}\img\"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
