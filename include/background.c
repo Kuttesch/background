@@ -5,27 +5,28 @@
 #define MAX_PATH 260
 #define MAX_LINE_LENGTH 256
 
-int changeBackground(char *nightImagePath, char *dayImagePath, int *backgroundStatePtr, int *fromTimePtr, int *toTimePtr);
-int setBackground(char *nightImagePath, char *dayImagePath, int *backgroundStatePtr);
-int getTime(int *backgroundStatePtr, int *fromTimePtr, int *toTimePtr);
+int setDesktopBackground(char *imagePath);
+int setLockscreenBackground(char * imagePath);
+int setBackground(char *imagePath);
 
-int changeBackground(char *nightImagePath, char *dayImagePath, int *backgroundStatePtr, int *fromTimePtr, int *toTimePtr) {
-    if (getTime(backgroundStatePtr, fromTimePtr, toTimePtr) != 0) {
-        error("Failiure getting time");
+int setBackground(char *imagePath) {
+    if (setDesktopBackground(imagePath) != 0) {
+        error("Failiure setting Desktop Background!");
         return 1;
     }
-    if (setBackground(nightImagePath, dayImagePath, backgroundStatePtr) != 0) {
-        error("Failiure setting background");
+
+    if (setLockscreenBackground(imagePath) != 0) {
+        error("Failiure setting Lockscreen Background!");
         return 1;
     }
+
     return 0;
 }
 
-int setBackground(char *nightImagePath, char *dayImagePath, int *backgroundStatePtr) {
+int setDesktopBackground(char *imagePath) {
     char absolutePath[MAX_PATH];
-    const char *relativePath = *backgroundStatePtr == 1 ? nightImagePath : dayImagePath;
-
-    if (!GetFullPathNameA(relativePath, MAX_PATH, absolutePath, NULL)) {
+    
+    if (!GetFullPathNameA(imagePath, MAX_PATH, absolutePath, NULL)) {
         error("Failiure converting to absolute path: %ld", GetLastError());
         return 1;
     }
@@ -36,19 +37,6 @@ int setBackground(char *nightImagePath, char *dayImagePath, int *backgroundState
     return 0;
 }
 
-int getTime(int *backgroundStatePtr, int *fromTimePtr, int *toTimePtr) {
-    SYSTEMTIME time;
-    GetLocalTime(&time);
-    int hour = time.wHour;
-    if (*fromTimePtr < 24 && *toTimePtr < 24 && *fromTimePtr < *toTimePtr) {
-        if (hour >= *fromTimePtr && hour < *toTimePtr) {
-            *backgroundStatePtr = 0;
-        } else {
-            *backgroundStatePtr = 1;
-        }
-    } else {
-        error("Invalid time");
-        return 1;
-    }
+int setLockscreenBackground(char *imagePath) {
     return 0;
 }
