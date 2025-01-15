@@ -14,6 +14,7 @@ HWND hiddenWindow;
 
 // Constants
 #define CONFIG_PATH "./config.ini"
+#define CONFIG_PATH_SIZE sizeof(CONFIG_PATH)
 #define MAX_VALUE_LENGTH 128
 #define ANIMATION_FRAMES 21
 #define NIGHT 1
@@ -23,29 +24,171 @@ HICON animationIcons[ANIMATION_FRAMES];
 
 volatile bool stopThread = false; // Signal to stop the thread
 
-int backgroundState = 0;
 int sleepTime = 30;
+
+// ### config values ### //
 
 char nightPath[MAX_VALUE_LENGTH];
 char dayPath[MAX_VALUE_LENGTH];
 int fromTime, toTime;
+int backgroundState = DAY;
 
-int currentFrame = 0;
 
 volatile bool day2Night = true;
 
 void loadAnimationIcons();
 void cleanupAnimationIcons();
-void animateIcon(bool dayToNight);
-int changeBackgroundWrapper();
+void animateIconDayToNight();
+void animateIconNightToDay();
+int changeBackground();
 
-// Function declarations
+// ### Function declarations ### //
+
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow);
 LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM lParam);
 int makeAbsolutePath(char *relativePath, char *absolutePath);
-int createConfig(char *configPath);
+int createConfig();
 
-// Message handler for the window
+
+int programLoop() {
+    
+    if (readConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime) != 0) {
+        error("Failure reading config");
+        return 1;
+    }
+
+    changeBackground();
+
+    Sleep(1000);
+    return 0;
+}
+
+int changeBackground() {
+    int initialBackgroundState = backgroundState;
+    debug("backgroundState: %d", backgroundState);
+
+    setBackgroundState(&backgroundState, &fromTime, &toTime);
+    if (backgroundState == NIGHT && initialBackgroundState == DAY) {
+        setBackground(nightPath);
+        animateIconDayToNight();
+    } else if (backgroundState == DAY && initialBackgroundState == NIGHT ) {
+        setBackground(dayPath);
+        animateIconNightToDay();
+    }
+    return 0;
+}
+
+
+// ### Config ### //
+
+
+//!TODO Overwork config
+int checkIfConfig() {
+    const char *configPathPtr = CONFIG_PATH;
+    FILE *file = fopen(configPathPtr, "r");
+    if (file == NULL) {
+        if(createConfig() != 0) {
+            error("Failed to create config file");
+            return 1;
+        } else {
+            return checkIfConfig();
+        }
+    }
+    fclose(file);
+    return 0;
+
+}
+
+int createConfig() {
+    const char *configPathPtr = CONFIG_PATH;
+    FILE *file = fopen(configPathPtr, "w");
+    if (file == NULL) {
+        error("Failed to create config file");
+        return 1;
+    }
+    fclose(file);
+    writeIniValue(configPathPtr, "Path", "NIGHT", ".img\\night.jpg");
+    writeIniValue(configPathPtr, "Path", "DAY", ".img\\day.jpg");
+    writeIniValue(configPathPtr, "Time", "FROM", "0");
+    writeIniValue(configPathPtr, "Time", "TO", "24");
+    return 0;
+}
+
+int readConfig() {
+
+    const char *configPathPtr = CONFIG_PATH;
+    int *fromTimePtr = &fromTime;
+    int *toTimePtr = &toTime;
+    int *backgroundStatePtr = &backgroundState;
+
+    const char *pathSection = "Path";
+    const char *pathKeys[] = {"NIGHT", "DAY"};
+
+    const char *timeSection = "Time";
+    const char *timeKeys[] = {"FROM", "TO"};
+
+    const char *stateSection = "State";
+    const char *stateKeys[] = {"BACKGROUND"};
+
+    for (int i = 0; i < sizeof(pathKeys) / sizeof(pathKeys[0]); i++) {
+        char value[MAX_VALUE_LENGTH];
+        if (readIniValue(configPathPtr, pathSection, pathKeys[i], value) != 0) {
+            error("Failure reading path");
+            return 1;
+        }
+        if (i == 0) {
+            strcpy(nightPath, value);
+        } else {
+            strcpy(dayPath, value);
+        }
+    }
+
+    for (int i = 0; i < sizeof(timeKeys) / sizeof(timeKeys[0]); i++) {
+        char value[MAX_VALUE_LENGTH];
+        if (readIniValue(configPathPtr, timeSection, timeKeys[i], value) != 0) {
+            error("Failure reading time");
+            return 1;
+        }
+        if (i == 0) {
+            *fromTimePtr = atoi(value);
+        } else {
+            *toTimePtr = atoi(value);
+        }
+    }
+
+    for (int i = 0; i < sizeof(stateKeys) / sizeof(timeKeys[0]); i++) {
+        char value[MAX_VALUE_LENGTH];
+        if (readIniValue(configPathPtr, stateSection, stateKeys[i], value) != 0) {
+            error("Failiure reading state");
+            //!TODO Add Error fallback
+            return 1;
+        } else {
+            *backgroundStatePtr = atoi(value);
+        }
+    }
+    
+    return 0;
+}
+
+int updateBackgroundStateConfig() {
+
+    const char *configPathPtr = CONFIG_PATH;
+    char value[MAX_VALUE_LENGTH];
+    int intValue;
+    readIniValue(CONFIG_PATH, "State", "BACKGROUND", value);
+    intValue = atoi(value);
+    if (intValue != backgroundState) {
+        char value[MAX_VALUE_LENGTH];
+        snprintf (value, sizeof(value), "%d", backgroundState);
+        writeIniValue(CONFIG_PATH, "State", "BACKGROUND", value);
+    }
+    return 0;
+}
+
+
+// ### WinAPI ### //
+
+
 LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
         case WM_DESTROY:
@@ -157,182 +300,6 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
     return DefWindowProc(hiddenWindow, uMsg, wParam, lParam);
 }
 
-int initConfig(char *configPath, char *nightPath, char *dayPath, int *fromTime, int *toTime) {
-
-    const char *pathSection = "Path";
-    const char *pathKeys[] = {"NIGHT", "DAY"};
-
-    const char *timeSection = "Time";
-    const char *timeKeys[] = {"FROM", "TO"};
-
-    for (int i = 0; i < sizeof(pathKeys) / sizeof(pathKeys[0]); i++) {
-        char value[MAX_VALUE_LENGTH];
-        if (readIniValue(configPath, pathSection, pathKeys[i], value) != 0) {
-            error("Failure reading path");
-            return 1;
-        }
-        if (i == 0) {
-            strcpy(nightPath, value);
-            // debug("nightPath: %s", nightPath);
-        } else {
-            strcpy(dayPath, value);
-            // debug("dayPath: %s", dayPath);
-        }
-    }
-
-    for (int i = 0; i < sizeof(timeKeys) / sizeof(timeKeys[0]); i++) {
-        char value[MAX_VALUE_LENGTH];
-        if (readIniValue(configPath, timeSection, timeKeys[i], value) != 0) {
-            error("Failure reading time");
-            return 1;
-        }
-        if (i == 0) {
-            *fromTime = atoi(value);  // Convert value to integer
-            // debug("fromTime: %d", *fromTime);
-        } else {
-            *toTime = atoi(value);    // Convert value to integer
-            // debug("toTime: %d", *toTime);
-        }
-    }
-
-    return 0;
-}
-
-int makeAbsolutePath(char *relativePath, char *absolutePath) {
-    if (!GetFullPathNameA(relativePath, MAX_PATH, absolutePath, NULL)) {
-        error("Failiure converting to absolute path: %ld", GetLastError());
-        return 1;
-    }
-    return 0;
-}
-
-int programLoop() {
-    
-    changeBackgroundWrapper();
-    // debug("changeBackground");
-    Sleep(1000);
-    return 0;
-}
-
-int changeBackgroundWrapper() {
-    int initialBackgroundState = backgroundState;
-
-    if (initConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime) != 0) {
-        error("Failure initializing config");
-        return 1;
-    }
-    getTime(&backgroundState, &fromTime, &toTime);
-    debug("backgroundState: %d", backgroundState);
-    if (backgroundState == 1 && initialBackgroundState == 0) {
-        changeBackground(nightPath, dayPath, &backgroundState, &fromTime, &toTime);
-        animateIcon(true);
-    } else if (backgroundState == 0 && initialBackgroundState == 1 ) {
-        changeBackground(nightPath, dayPath, &backgroundState, &fromTime, &toTime);
-        animateIcon(false);
-    }
-    return 0;
-}
-
-int checkIfConfig(char *configPath) {
-    FILE *file = fopen(configPath, "r");
-    if (file == NULL) {
-        if(createConfig(configPath) != 0) {
-            error("Failed to create config file");
-            return 1;
-        } else {
-            checkIfConfig(configPath);
-        }
-    }
-    fclose(file);
-    return 0;
-
-}
-
-int createConfig(char *configPath) {
-    FILE *file = fopen(configPath, "w");
-    if (file == NULL) {
-        error("Failed to create config file");
-        return 1;
-    }
-    fclose(file);
-    writeIniValue(configPath, "Path", "NIGHT", ".img\night.jpg");
-    writeIniValue(configPath, "Path", "DAY", ".img\day.jpg");
-    writeIniValue(configPath, "Time", "FROM", "0");
-    writeIniValue(configPath, "Time", "TO", "24");
-    MessageBox(NULL, TEXT("Please fill out your created config file!"), TEXT("Info"), MB_OK | MB_ICONINFORMATION);
-    return 0;
-}
-
-void loadAnimationIcons() {
-    int iconIds[ANIMATION_FRAMES] = {
-        ANIMATION0, ANIMATION1, ANIMATION2, ANIMATION3, ANIMATION4,
-        ANIMATION5, ANIMATION6, ANIMATION7, ANIMATION8, ANIMATION9,
-        ANIMATION10, ANIMATION11, ANIMATION12, ANIMATION13, ANIMATION14,
-        ANIMATION15, ANIMATION16, ANIMATION17, ANIMATION18, ANIMATION19, ANIMATION20
-    };
-
-    for (int i = 0; i < ANIMATION_FRAMES; i++) {
-        animationIcons[i] = LoadIcon(hInstance, MAKEINTRESOURCE(iconIds[i]));
-        if (animationIcons[i] == NULL) {
-            error("Failed to load icon frame: %d", iconIds[i]);
-        }
-    }
-}
-
-void cleanupAnimationIcons() {
-    for (int i = 0; i < ANIMATION_FRAMES; i++) {
-        if (animationIcons[i] != NULL) {
-            DestroyIcon(animationIcons[i]);
-        }
-    }
-}
-
-void animateIcon(bool dayToNight) {
-    if (dayToNight) {
-        for (int i = ANIMATION_FRAMES - 1; i >= 0; i--) {
-            notifData.hIcon = animationIcons[i];
-            Shell_NotifyIcon(NIM_MODIFY, &notifData);
-            Sleep(10);
-        }
-    } else {
-        for (int i = 0; i < ANIMATION_FRAMES; i++) {
-            notifData.hIcon = animationIcons[i];
-            Shell_NotifyIcon(NIM_MODIFY, &notifData);
-            Sleep(10);
-        }
-    }
-}
-
-int initialzeAnimation () {
-    getTime(&backgroundState, &fromTime, &toTime);
-    if (backgroundState == 1) {
-        notifData.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ANIMATION0));
-        if (notifData.hIcon == NULL) {
-            error("Failed to load tray icon");
-            return 1;
-        }
-        Shell_NotifyIcon(NIM_ADD, &notifData);
-    } else if (backgroundState == 0) {
-        notifData.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ANIMATION20));
-        if (notifData.hIcon == NULL) {
-            error("Failed to load tray icon");
-            return 1;
-        }
-        Shell_NotifyIcon(NIM_ADD, &notifData);
-    } else {
-        error("Invalid background state");
-        return 1;
-    }
-    return 0;
-}
-
-int initializeMain() {
-    initialzeAnimation();
-    getTime(&backgroundState, &fromTime, &toTime);
-    changeBackground(nightPath, dayPath, &backgroundState, &fromTime, &toTime);
-    return 0;
-}
-
 DWORD WINAPI ProgramLoopThread(LPVOID lpParam) {
     while (!stopThread) { // Continue running until stopThread is set to true
         if (programLoop() != 0) {
@@ -355,7 +322,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 
     char configPath[MAX_PATH] = CONFIG_PATH;
 
-    if (initConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime) != 0) {
+    if (readConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime) != 0) {
         error("Failure initializing config");
         return 1;
     }
@@ -399,7 +366,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
         return 1;
     }
 
-    // initialzeAnimation(day2Night);
+    // initializeAnimation(day2Night);
     // Shell_NotifyIcon(NIM_ADD, &notifData);
 
     changeBackground(nightPath, dayPath, &backgroundState, &fromTime, &toTime);
@@ -426,4 +393,118 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
     Shell_NotifyIcon(NIM_DELETE, &notifData);
     return 0;
 
+}
+
+
+// ### initialization ### //
+
+
+int initializeMain() {
+    initializeAnimation();
+    setBackgroundState(&backgroundState, &fromTime, &toTime);
+    if (backgroundState == NIGHT) {
+        setBackground(nightPath);
+        animateIconDayToNight();
+    } else if (backgroundState == DAY) {
+        setBackground(dayPath);
+        animateIconNightToDay();
+    }
+    return 0;
+}
+
+// ### Icon Animation ### //
+
+
+int initializeAnimation () {
+    setBackgroundState(&backgroundState, &fromTime, &toTime);
+    if (backgroundState == DAY) {
+        notifData.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ANIMATION0));
+        if (notifData.hIcon == NULL) {
+            error("Failed to load tray icon");
+            return 1;
+        }
+        Shell_NotifyIcon(NIM_ADD, &notifData);
+    } else if (backgroundState == NIGHT) {
+        notifData.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ANIMATION20));
+        if (notifData.hIcon == NULL) {
+            error("Failed to load tray icon");
+            return 1;
+        }
+        Shell_NotifyIcon(NIM_ADD, &notifData);
+    } else {
+        error("Invalid background state");
+        return 1;
+    }
+    return 0;
+}
+
+void loadAnimationIcons() {
+    int iconIds[ANIMATION_FRAMES] = {
+        ANIMATION0, ANIMATION1, ANIMATION2, ANIMATION3, ANIMATION4,
+        ANIMATION5, ANIMATION6, ANIMATION7, ANIMATION8, ANIMATION9,
+        ANIMATION10, ANIMATION11, ANIMATION12, ANIMATION13, ANIMATION14,
+        ANIMATION15, ANIMATION16, ANIMATION17, ANIMATION18, ANIMATION19, ANIMATION20
+    };
+
+    for (int i = 0; i < ANIMATION_FRAMES; i++) {
+        animationIcons[i] = LoadIcon(hInstance, MAKEINTRESOURCE(iconIds[i]));
+        if (animationIcons[i] == NULL) {
+            error("Failed to load icon frame: %d", iconIds[i]);
+        }
+    }
+}
+
+void cleanupAnimationIcons() {
+    for (int i = 0; i < ANIMATION_FRAMES; i++) {
+        if (animationIcons[i] != NULL) {
+            DestroyIcon(animationIcons[i]);
+        }
+    }
+}
+
+
+void animateIconDayToNight() {
+    for (int i = ANIMATION_FRAMES - 1; i >= 0; i--) {
+        notifData.hIcon = animationIcons[i];
+        Shell_NotifyIcon(NIM_MODIFY, &notifData);
+        Sleep(10);
+    }
+}
+
+void animateIconNightToDay() {
+    for (int i = 0; i < ANIMATION_FRAMES; i++) {
+        notifData.hIcon = animationIcons[i];
+        Shell_NotifyIcon(NIM_MODIFY, &notifData);
+        Sleep(10);
+    }
+}
+
+
+// ### 
+
+
+int setBackgroundState(int *backgroundStatePtr, int *fromTimePtr, int *toTimePtr) {
+    SYSTEMTIME time;
+    GetLocalTime(&time);
+    int hour = time.wHour;
+    if (*fromTimePtr < 24 && *toTimePtr < 24 && *fromTimePtr < *toTimePtr) {
+        if (hour >= *fromTimePtr && hour < *toTimePtr) {
+            *backgroundStatePtr = DAY;
+        } else {
+            *backgroundStatePtr = NIGHT;
+        }
+        updateBackgroundStateConfig();
+    } else {
+        error("Invalid time");
+        return 1;
+    }
+    return 0;
+}
+
+int makeAbsolutePath(char *relativePath, char *absolutePath) {
+    if (!GetFullPathNameA(relativePath, MAX_PATH, absolutePath, NULL)) {
+        error("Failiure converting to absolute path: %ld", GetLastError());
+        return 1;
+    }
+    return 0;
 }
