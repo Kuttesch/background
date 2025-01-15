@@ -360,7 +360,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
     // }
 
     wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ICON_ID));
-    lstrcpy(notifData.szTip, TEXT("Background"));
+    lstrcpy(notifData.szTip, TEXT("WallCycle"));
     if (initializeMain() != 0) {
         error("Failiure Initializing!");
         return 1;
