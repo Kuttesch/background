@@ -5,9 +5,29 @@
 #define MAX_PATH 260
 #define MAX_LINE_LENGTH 256
 
-int setDesktopBackground(char *imagePath);
-int setLockscreenBackground(char * imagePath);
+/**
+ * @brief Sets the desktop background and lock screen background using the specified image.
+ * 
+ * @param imagePath Path to the image file to be set as background.
+ * @return 0 if successful, 1 if any operation fails.
+ */
 int setBackground(char *imagePath);
+
+/**
+ * @brief Sets the desktop wallpaper to the specified image.
+ * 
+ * @param imagePath Path to the image file to be set as the desktop wallpaper.
+ * @return 0 if successful, 1 otherwise.
+ */
+int setDesktopBackground(char *imagePath);
+
+/**
+ * @brief Sets the lock screen background to the specified image.
+ * 
+ * @param imagePath Path to the image file to be set as the lock screen background.
+ * @return 0 if successful, 1 otherwise.
+ */
+int setLockscreenBackground(char *imagePath);
 
 int setBackground(char *imagePath) {
     if (setDesktopBackground(imagePath) != 0) {
