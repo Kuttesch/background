@@ -22,7 +22,7 @@ HWND hiddenWindow;
 
 HICON animationIcons[ANIMATION_FRAMES];
 
-volatile bool stopThread = false; // Signal to stop the thread
+volatile bool stopThread = false;
 
 int sleepTime = 30;
 
@@ -49,17 +49,14 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
 int makeAbsolutePath(char *relativePath, char *absolutePath);
 int createConfig();
 
-
 int programLoop() {
     
     if (readConfig(CONFIG_PATH, nightPath, dayPath, &fromTime, &toTime) != 0) {
         error("Failure reading config");
         return 1;
     }
-
     changeBackground();
-
-    Sleep(1000);
+    Sleep(1000); //!TODO Make mechanic for dynamic sleeptimes
     return 0;
 }
 
@@ -192,11 +189,11 @@ int updateBackgroundStateConfig() {
 LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
         case WM_DESTROY:
-            Shell_NotifyIcon(NIM_DELETE, &notifData); // Remove tray icon
+            Shell_NotifyIcon(NIM_DELETE, &notifData);
             PostQuitMessage(0);
             return 0;
 
-        case WM_USER + 1: // Custom message for tray icon
+        case WM_USER + 1:
             if (lParam == WM_RBUTTONDOWN) {
                 HMENU hMenu = CreatePopupMenu();
                 HMENU hSettingsMenu = CreatePopupMenu();
@@ -264,7 +261,7 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
 
                 POINT pt;
                 GetCursorPos(&pt);
-                SetForegroundWindow(hiddenWindow); // Required for TrackPopupMenu to work correctly
+                SetForegroundWindow(hiddenWindow);
                 TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hiddenWindow, NULL);
                 DestroyMenu(hMenu);
             } else if (lParam == WM_LBUTTONDOWN) {
@@ -273,9 +270,9 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
 
         case WM_COMMAND:
             stopThread = true;
-            if (LOWORD(wParam) == 1) { // Exit menu item ID
-                stopThread = true;       // Signal the thread to stop
-                PostQuitMessage(0);      // Exit the message loop
+            if (LOWORD(wParam) == 1) {
+                stopThread = true;      
+                PostQuitMessage(0);     
 
             }else if (LOWORD(wParam) >= 100 && LOWORD(wParam) <= 124) {
                 int param = LOWORD(wParam) - 100;
@@ -294,19 +291,17 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
             }
             return 0;
 
-
-
     }
     return DefWindowProc(hiddenWindow, uMsg, wParam, lParam);
 }
 
 DWORD WINAPI ProgramLoopThread(LPVOID lpParam) {
-    while (!stopThread) { // Continue running until stopThread is set to true
+    while (!stopThread) {
         if (programLoop() != 0) {
             error("Program loop encountered an error");
-            break; // Exit the loop on error
+            break;
         }
-        Sleep(10); // Add a small delay to avoid busy-waiting
+        Sleep(10);
     }
     return 0;
 }
@@ -332,17 +327,17 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
         return 1;
     }
 
-    // Register window class
+   
     WNDCLASS wc = { 0 };
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInst;
     wc.lpszClassName = TEXT("WallCycle");
     RegisterClass(&wc);
 
-    // Create a hidden window
+   
     hiddenWindow = CreateWindow(wc.lpszClassName, TEXT("WallCycle"), 0, 0, 0, 0, 0, NULL, NULL, hInst, NULL);
 
-    // Add icon to the system tray
+   
     ZeroMemory(&notifData, sizeof(NOTIFYICONDATA));
     notifData.cbSize = sizeof(NOTIFYICONDATA);
     notifData.hWnd = hiddenWindow;
@@ -352,22 +347,12 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
     notifData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     notifData.uCallbackMessage = WM_USER + 1;
 
-    // notifData.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ANIMATION0));
-
-    // if (!notifData.hIcon) {
-    //     error("Failed to load tray icon");
-    //     return 1;
-    // }
-
     wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ICON_ID));
     lstrcpy(notifData.szTip, TEXT("WallCycle"));
     if (initializeMain() != 0) {
         error("Failiure Initializing!");
         return 1;
     }
-
-    // initializeAnimation(day2Night);
-    // Shell_NotifyIcon(NIM_ADD, &notifData);
 
     changeBackground(nightPath, dayPath, &backgroundState, &fromTime, &toTime);
 
@@ -377,19 +362,19 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
         return 1;
     }
 
-    // Message loop
+   
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
 
-    // Signal the thread to stop and wait for it to finish
+   
     stopThread = true;
     WaitForSingleObject(hThread, INFINITE);
     CloseHandle(hThread);
 
-    // Cleanup
+   
     Shell_NotifyIcon(NIM_DELETE, &notifData);
     return 0;
 
