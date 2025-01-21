@@ -1,3 +1,56 @@
+/**
+ * @file systray.c
+ * @brief This file contains the implementation of a system tray application that changes the desktop background based on the time of day.
+ * 
+ * The application reads configuration from an INI file, sets the background to a day or night image, and animates the system tray icon accordingly.
+ * 
+ * @include <stdio.h>
+ * @include <windows.h>
+ * @include "background.h"
+ * @include <stdbool.h>
+ * @include "resource.h"
+ * @include "ini.h"
+ * @include "log.h"
+ * 
+ * @global NOTIFYICONDATA notifData - Data structure for the system tray icon.
+ * @global HINSTANCE hInstance - Handle to the application instance.
+ * @global HWND hiddenWindow - Handle to the hidden window used for message processing.
+ * @global HICON animationIcons[ANIMATION_FRAMES] - Array of icons for animation frames.
+ * @global volatile bool stopThread - Flag to stop the background thread.
+ * @global int sleepTime - Sleep time between background checks.
+ * @global char nightPath[MAX_VALUE_LENGTH] - Path to the night background image.
+ * @global char dayPath[MAX_VALUE_LENGTH] - Path to the day background image.
+ * @global int fromTime - Start time for the day background.
+ * @global int toTime - End time for the day background.
+ * @global int backgroundState - Current background state (DAY or NIGHT).
+ * @global volatile bool day2Night - Flag indicating if the transition is from day to night.
+ * 
+ * @define CONFIG_PATH - Path to the configuration file.
+ * @define CONFIG_PATH_SIZE - Size of the configuration path.
+ * @define MAX_VALUE_LENGTH - Maximum length of configuration values.
+ * @define ANIMATION_FRAMES - Number of frames in the icon animation.
+ * @define NIGHT - Constant representing night state.
+ * @define DAY - Constant representing day state.
+ * 
+ * @function loadAnimationIcons - Loads the icons for the animation frames.
+ * @function cleanupAnimationIcons - Cleans up the loaded animation icons.
+ * @function animateIconDayToNight - Animates the icon from day to night.
+ * @function animateIconNightToDay - Animates the icon from night to day.
+ * @function changeBackground - Changes the desktop background based on the current state.
+ * @function WinMain - Entry point for the application.
+ * @function WindowProc - Window procedure for handling messages.
+ * @function makeAbsolutePath - Converts a relative path to an absolute path.
+ * @function createConfig - Creates a default configuration file.
+ * @function readConfig - Reads the configuration from the INI file.
+ * @function updateBackgroundStateConfig - Updates the background state in the configuration file.
+ * @function checkIfConfig - Checks if the configuration file exists and creates it if necessary.
+ * @function programLoop - Main loop for the background thread.
+ * @function ProgramLoopThread - Thread function for the program loop.
+ * @function initializeMain - Initializes the main components of the application.
+ * @function initializeAnimation - Initializes the animation based on the current background state.
+ * @function setBackgroundState - Sets the background state based on the current time.
+ */
+
 #include <stdio.h>
 #include <windows.h>
 #include "background.h"
@@ -5,12 +58,6 @@
 #include "resource.h"
 #include "ini.h"
 #include "log.h"
-
-// Global variables
-NOTIFYICONDATA notifData;
-HINSTANCE hInstance;
-HWND hiddenWindow;
-
 
 // Constants
 #define CONFIG_PATH "./config.ini"
@@ -20,34 +67,145 @@ HWND hiddenWindow;
 #define NIGHT 1
 #define DAY 0
 
-HICON animationIcons[ANIMATION_FRAMES];
+// Global variables
+NOTIFYICONDATA notifData; // Data structure for the system tray icon.
+HINSTANCE hInstance; // Handle to the application instance.
+HWND hiddenWindow; // Handle to the hidden window used for message processing.
+HICON animationIcons[ANIMATION_FRAMES]; // Array of icons for animation frames.
+volatile bool stopThread = false; // Flag to stop the background thread.
+int sleepTime = 30; // Sleep time between background checks.
 
-volatile bool stopThread = false; // Signal to stop the thread
-
-int sleepTime = 30;
-
-// ### config values ### //
-
-char nightPath[MAX_VALUE_LENGTH];
-char dayPath[MAX_VALUE_LENGTH];
-int fromTime, toTime;
-int backgroundState = DAY;
+char nightPath[MAX_VALUE_LENGTH]; // Path to the night background image.
+char dayPath[MAX_VALUE_LENGTH]; // Path to the day background image.
+int fromTime, toTime; // Time ranges for day and night backgrounds.
+int backgroundState = DAY; // Current background state (DAY or NIGHT).
+volatile bool day2Night = true; // Flag indicating if the transition is from day to night.
 
 
-volatile bool day2Night = true;
+// ### Function definitions ### //
 
+
+/**
+ * @brief Loads the icons for the animation frames.
+ */
 void loadAnimationIcons();
+
+/**
+ * @brief Cleans up the loaded animation icons.
+ */
 void cleanupAnimationIcons();
+
+/**
+ * @brief Animates the system tray icon from day to night.
+ */
 void animateIconDayToNight();
+
+/**
+ * @brief Animates the system tray icon from night to day.
+ */
 void animateIconNightToDay();
+
+/**
+ * @brief Changes the desktop background based on the current state.
+ * 
+ * @return 0 on success, non-zero on failure.
+ */
 int changeBackground();
 
-// ### Function declarations ### //
-
+/**
+ * @brief Entry point for the application.
+ * 
+ * @param hInst Handle to the application instance.
+ * @param hPrevInst Handle to the previous instance (unused).
+ * @param lpCmdLine Command line arguments.
+ * @param nCmdShow Initial window show state.
+ * 
+ * @return Exit code.
+ */
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow);
+
+/**
+ * @brief Window procedure for handling messages.
+ * 
+ * @param hiddenWindow Handle to the hidden window.
+ * @param uMsg Message identifier.
+ * @param wParam First message parameter.
+ * @param lParam Second message parameter.
+ * 
+ * @return Result of the message processing.
+ */
 LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+/**
+ * @brief Converts a relative path to an absolute path.
+ * 
+ * @param relativePath The relative path to convert.
+ * @param absolutePath Buffer to store the absolute path.
+ * 
+ * @return 0 on success, non-zero on failure.
+ */
 int makeAbsolutePath(char *relativePath, char *absolutePath);
+
+/**
+ * @brief Creates a default configuration file.
+ * 
+ * @return 0 on success, non-zero on failure.
+ */
 int createConfig();
+
+/**
+ * @brief Reads the configuration from the INI file.
+ * 
+ * @return 0 on success, non-zero on failure.
+ */
+int readConfig();
+
+/**
+ * @brief Updates the background state in the configuration file.
+ * 
+ * @return 0 on success, non-zero on failure.
+ */
+int updateBackgroundStateConfig();
+
+/**
+ * @brief Checks if the configuration file exists and creates it if necessary.
+ * 
+ * @return 0 on success, non-zero on failure.
+ */
+int checkIfConfig();
+
+/**
+ * @brief Main loop for the background thread.
+ * 
+ * @return 0 on success, non-zero on failure.
+ */
+int programLoop();
+
+/**
+ * @brief Thread function for the program loop.
+ * 
+ * @param lpParam Thread parameter (unused).
+ * 
+ * @return Exit code.
+ */
+DWORD WINAPI ProgramLoopThread(LPVOID lpParam);
+
+/**
+ * @brief Initializes the main components of the application.
+ * 
+ * @return 0 on success, non-zero on failure.
+ */
+int initializeMain();
+
+/**
+ * @brief Initializes the animation based on the current background state.
+ * 
+ * @return 0 on success, non-zero on failure.
+ */
+int initializeAnimation();
+
+
+// ### Main Loop ### //
 
 
 int programLoop() {
@@ -56,10 +214,8 @@ int programLoop() {
         error("Failure reading config");
         return 1;
     }
-
     changeBackground();
-
-    Sleep(1000);
+    Sleep(1000); //!TODO Make mechanic for dynamic sleeptimes
     return 0;
 }
 
@@ -192,11 +348,11 @@ int updateBackgroundStateConfig() {
 LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
         case WM_DESTROY:
-            Shell_NotifyIcon(NIM_DELETE, &notifData); // Remove tray icon
+            Shell_NotifyIcon(NIM_DELETE, &notifData);
             PostQuitMessage(0);
             return 0;
 
-        case WM_USER + 1: // Custom message for tray icon
+        case WM_USER + 1:
             if (lParam == WM_RBUTTONDOWN) {
                 HMENU hMenu = CreatePopupMenu();
                 HMENU hSettingsMenu = CreatePopupMenu();
@@ -264,7 +420,7 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
 
                 POINT pt;
                 GetCursorPos(&pt);
-                SetForegroundWindow(hiddenWindow); // Required for TrackPopupMenu to work correctly
+                SetForegroundWindow(hiddenWindow);
                 TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hiddenWindow, NULL);
                 DestroyMenu(hMenu);
             } else if (lParam == WM_LBUTTONDOWN) {
@@ -273,9 +429,9 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
 
         case WM_COMMAND:
             stopThread = true;
-            if (LOWORD(wParam) == 1) { // Exit menu item ID
-                stopThread = true;       // Signal the thread to stop
-                PostQuitMessage(0);      // Exit the message loop
+            if (LOWORD(wParam) == 1) {
+                stopThread = true;      
+                PostQuitMessage(0);     
 
             }else if (LOWORD(wParam) >= 100 && LOWORD(wParam) <= 124) {
                 int param = LOWORD(wParam) - 100;
@@ -294,19 +450,17 @@ LRESULT CALLBACK WindowProc(HWND hiddenWindow, UINT uMsg, WPARAM wParam, LPARAM 
             }
             return 0;
 
-
-
     }
     return DefWindowProc(hiddenWindow, uMsg, wParam, lParam);
 }
 
 DWORD WINAPI ProgramLoopThread(LPVOID lpParam) {
-    while (!stopThread) { // Continue running until stopThread is set to true
+    while (!stopThread) {
         if (programLoop() != 0) {
             error("Program loop encountered an error");
-            break; // Exit the loop on error
+            break;
         }
-        Sleep(10); // Add a small delay to avoid busy-waiting
+        Sleep(10);
     }
     return 0;
 }
@@ -332,17 +486,17 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
         return 1;
     }
 
-    // Register window class
+   
     WNDCLASS wc = { 0 };
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInst;
     wc.lpszClassName = TEXT("WallCycle");
     RegisterClass(&wc);
 
-    // Create a hidden window
+   
     hiddenWindow = CreateWindow(wc.lpszClassName, TEXT("WallCycle"), 0, 0, 0, 0, 0, NULL, NULL, hInst, NULL);
 
-    // Add icon to the system tray
+   
     ZeroMemory(&notifData, sizeof(NOTIFYICONDATA));
     notifData.cbSize = sizeof(NOTIFYICONDATA);
     notifData.hWnd = hiddenWindow;
@@ -352,22 +506,12 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
     notifData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     notifData.uCallbackMessage = WM_USER + 1;
 
-    // notifData.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ANIMATION0));
-
-    // if (!notifData.hIcon) {
-    //     error("Failed to load tray icon");
-    //     return 1;
-    // }
-
     wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(ICON_ID));
     lstrcpy(notifData.szTip, TEXT("WallCycle"));
     if (initializeMain() != 0) {
         error("Failiure Initializing!");
         return 1;
     }
-
-    // initializeAnimation(day2Night);
-    // Shell_NotifyIcon(NIM_ADD, &notifData);
 
     changeBackground(nightPath, dayPath, &backgroundState, &fromTime, &toTime);
 
@@ -377,19 +521,19 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
         return 1;
     }
 
-    // Message loop
+   
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
 
-    // Signal the thread to stop and wait for it to finish
+   
     stopThread = true;
     WaitForSingleObject(hThread, INFINITE);
     CloseHandle(hThread);
 
-    // Cleanup
+   
     Shell_NotifyIcon(NIM_DELETE, &notifData);
     return 0;
 
@@ -411,6 +555,7 @@ int initializeMain() {
     }
     return 0;
 }
+
 
 // ### Icon Animation ### //
 
@@ -461,7 +606,6 @@ void cleanupAnimationIcons() {
         }
     }
 }
-
 
 void animateIconDayToNight() {
     for (int i = ANIMATION_FRAMES - 1; i >= 0; i--) {
