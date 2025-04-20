@@ -26,3 +26,6 @@
 
 #Ignore Release
 /release
+
+#Ignore Python Virtual Environment
+.venv
