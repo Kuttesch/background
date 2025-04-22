@@ -1,16 +1,16 @@
 # Compiler and flags
-CC = cl
-CI = ISCC.exe
-CFLAGS = /Iinclude /EHsc
+CC = gcc
+CFLAGS = -Iinclude -Wall -mwindows
+
+# Resource compiler
+RC = windres
 
 # Libraries
-LIBS = user32.lib shell32.lib gdi32.lib
+LIBS = -luser32 -lshell32 -lgdi32
 
 # Source files
 SRCS = systray.c
 SRCS += $(wildcard include/*.c)
-
-ISRCS = .\install\installer.iss
 
 # Resource file
 RES = include/resource.rc
@@ -19,19 +19,20 @@ RES = include/resource.rc
 TARGET = WallCycle.exe
 
 # Output directory for build files
-OUT_DIR = .\out
+OUT_DIR = ./out
 
 # Object files
-OBJS = $(SRCS:%.c=$(OUT_DIR)/%.obj)
-RES_OBJ = $(OUT_DIR)/resource.res
+OBJS = $(SRCS:%.c=$(OUT_DIR)/%.o)
+RES_OBJ = $(OUT_DIR)/resource.o
 
-# Force PowerShell usage
-SHELL = powershell.exe
+# Installer
+CI = ISCC.exe
+ISRCS = ./install/installer.iss
 
-#release directory
-RELEASE_DIR = .\release\src
+# Release directory
+RELEASE_DIR = ./release/src
 
-#Animation directory
+# Animation directory
 ANIMATION_DIR = ./include/src/Animation
 
 # Default rule
@@ -39,55 +40,50 @@ all: $(TARGET)
 
 # Compile and link
 $(TARGET): $(OBJS) $(RES_OBJ)
-	$(CC) $(OBJS) $(RES_OBJ) $(CFLAGS) $(LIBS) /Fe:$(TARGET)
+	$(CC) $(OBJS) $(RES_OBJ) $(CFLAGS) $(LIBS) -o $(TARGET)
 
-# Rule to create object files
-$(OUT_DIR)/%.obj: %.c
-	# Ensure output directories exist
-	@if (-not (Test-Path $(OUT_DIR))) { New-Item -ItemType Directory -Path $(OUT_DIR) }
-	@if (-not (Test-Path $(OUT_DIR)/include)) { New-Item -ItemType Directory -Path $(OUT_DIR)/include }
-	$(CC) /c $< $(CFLAGS) /Fo$@
+# Compile source files
+$(OUT_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) -c $< $(CFLAGS) -o $@
 
-# Rule to compile resource file
+# Compile resource file
 $(RES_OBJ): $(RES)
-	# Ensure output directory exists
-	@if (-not (Test-Path $(OUT_DIR))) { New-Item -ItemType Directory -Path $(OUT_DIR) }
-	rc /fo $(RES_OBJ) $(RES)
+	@mkdir -p $(OUT_DIR)
+	$(RC) -i $< -o $@
 
-# Clean up
+# Clean up build artifacts
 clean:
-	# Delete the output files and directory
-	@if (Test-Path $(TARGET)) { Remove-Item $(TARGET) }
-	@if (Test-Path $(OUT_DIR)) { Remove-Item -Recurse -Force $(OUT_DIR) }
+	rm -rf $(OUT_DIR) $(TARGET)
 
+# Create installer
 installer:
-	# Create the installer
 	$(CI) $(ISRCS)
 
+# Copy release files
 copy:
-	@if (-not (Test-Path $(RELEASE_DIR))) { New-Item -ItemType Directory -Path $(RELEASE_DIR) }
-	Copy-Item .\WallCycle.exe $(RELEASE_DIR)
-	Copy-Item .\config.ini $(RELEASE_DIR)
-	Copy-Item .\README.md $(RELEASE_DIR)
+	@mkdir -p $(RELEASE_DIR)/img
+	cp ./WallCycle.exe $(RELEASE_DIR)
+	cp ./config.ini $(RELEASE_DIR)
+	cp ./README.md $(RELEASE_DIR)
+	cp -r ./img/* $(RELEASE_DIR)/img/
 
-	@if (-not (Test-Path $(RELEASE_DIR)\img)) { New-Item -ItemType Directory -Path $(RELEASE_DIR)\img }
-	Copy-Item -Recurse .\img\* $(RELEASE_DIR)\img\
-
+# Release task
 release: all copy installer
 
-
+# Clean release output
 release-clean: clean
-	@if (Test-Path $(RELEASE_DIR)) { Remove-Item -Recurse -Force $(RELEASE_DIR) }
+	rm -rf $(RELEASE_DIR)
 
+# Generate animation icons and resources
 animation:
-	# Create the animation frames from png
-	./.venv/Scripts/activate
-	python .\tooling\pngToIco.py -c "#1E1E1E" -f $(ANIMATION_DIR)
-	Move-Item $(ANIMATION_DIR)\resource.h .\include\resource.h
-	Move-Item $(ANIMATION_DIR)\resource.rc .\include\resource.rc
+	source ./.venv/Scripts/activate && \
+	python ./tooling/pngToIco.py -c "#1E1E1E" -f $(ANIMATION_DIR) && \
+	mv $(ANIMATION_DIR)/resource.h ./include/resource.h && \
+	mv $(ANIMATION_DIR)/resource.rc ./include/resource.rc
 
+# Clean animation icons
 animation-clean:
-	# Delete the animation frames
-	Remove-Item $(ANIMATION_DIR)\*.ico
-	Remove-Item .\include\resource.h
-	Remove-Item .\include\resource.rc
+	rm -f $(ANIMATION_DIR)/*.ico
+	rm -f ./include/resource.h
+	rm -f ./include/resource.rc

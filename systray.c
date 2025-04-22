@@ -204,6 +204,16 @@ int initializeMain();
  */
 int initializeAnimation();
 
+/**
+ * @brief Set the Background State object
+ * 
+ * @param backgroundStatePtr 
+ * @param fromTimePtr 
+ * @param toTimePtr 
+ * @return int 
+ */
+int setBackgroundState(int *backgroundStatePtr, int *fromTimePtr, int *toTimePtr);
+
 
 // ### Main Loop ### //
 
@@ -328,7 +338,6 @@ int readConfig() {
 
 int updateBackgroundStateConfig() {
 
-    const char *configPathPtr = CONFIG_PATH;
     char value[MAX_VALUE_LENGTH];
     int intValue;
     readIniValue(CONFIG_PATH, "State", "BACKGROUND", value);
@@ -470,9 +479,6 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int 
 
     checkIfConfig(CONFIG_PATH);
     loadAnimationIcons();
-
-    int *backgroundStatePtr = &backgroundState;
-
 
     char configPath[MAX_PATH] = CONFIG_PATH;
 
