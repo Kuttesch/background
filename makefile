@@ -81,13 +81,13 @@ release-clean: clean
 
 animation:
 	# Create the animation frames from png
-	venv
+	./.venv/Scripts/activate
 	python .\tooling\pngToIco.py -c "#1E1E1E" -f $(ANIMATION_DIR)
 	Move-Item $(ANIMATION_DIR)\resource.h .\include\resource.h
 	Move-Item $(ANIMATION_DIR)\resource.rc .\include\resource.rc
 
 animation-clean:
 	# Delete the animation frames
-	Remove-Item $(ANIMATION_DIR)*.ico
+	Remove-Item $(ANIMATION_DIR)\*.ico
 	Remove-Item .\include\resource.h
 	Remove-Item .\include\resource.rc
