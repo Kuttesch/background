@@ -31,6 +31,9 @@ SHELL = powershell.exe
 #release directory
 RELEASE_DIR = .\release\src
 
+#Animation directory
+ANIMATION_DIR = ./include/src/Animation
+
 # Default rule
 all: $(TARGET)
 
@@ -75,3 +78,16 @@ release: all copy installer
 
 release-clean: clean
 	@if (Test-Path $(RELEASE_DIR)) { Remove-Item -Recurse -Force $(RELEASE_DIR) }
+
+animation:
+	# Create the animation frames from png
+	venv
+	python .\tooling\pngToIco.py -c "#1E1E1E" -f $(ANIMATION_DIR)
+	Move-Item $(ANIMATION_DIR)\resource.h .\include\resource.h
+	Move-Item $(ANIMATION_DIR)\resource.rc .\include\resource.rc
+
+animation-clean:
+	# Delete the animation frames
+	Remove-Item $(ANIMATION_DIR)*.ico
+	Remove-Item .\include\resource.h
+	Remove-Item .\include\resource.rc
