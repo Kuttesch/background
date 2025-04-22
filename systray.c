@@ -53,8 +53,8 @@
 
 #include <stdio.h>
 #include <windows.h>
-#include "background.h"
 #include <stdbool.h>
+#include "background.h"
 #include "resource.h"
 #include "ini.h"
 #include "log.h"
@@ -63,7 +63,7 @@
 #define CONFIG_PATH "./config.ini"
 #define CONFIG_PATH_SIZE sizeof(CONFIG_PATH)
 #define MAX_VALUE_LENGTH 128
-#define ANIMATION_FRAMES 21
+#define ANIMATION_FRAMES 34 //!TODO Make dynamic
 #define NIGHT 1
 #define DAY 0
 
@@ -588,8 +588,12 @@ void loadAnimationIcons() {
         ANIMATION0, ANIMATION1, ANIMATION2, ANIMATION3, ANIMATION4,
         ANIMATION5, ANIMATION6, ANIMATION7, ANIMATION8, ANIMATION9,
         ANIMATION10, ANIMATION11, ANIMATION12, ANIMATION13, ANIMATION14,
-        ANIMATION15, ANIMATION16, ANIMATION17, ANIMATION18, ANIMATION19, ANIMATION20
-    };
+        ANIMATION15, ANIMATION16, ANIMATION17, ANIMATION18, ANIMATION19, ANIMATION20,
+        ANIMATION21, ANIMATION22, ANIMATION23, ANIMATION24, ANIMATION25,
+        ANIMATION26, ANIMATION27, ANIMATION28, ANIMATION29, ANIMATION30,
+        ANIMATION31, ANIMATION32, ANIMATION33
+    }; //make dynamic
+    
 
     for (int i = 0; i < ANIMATION_FRAMES; i++) {
         animationIcons[i] = LoadIcon(hInstance, MAKEINTRESOURCE(iconIds[i]));
