@@ -14,7 +14,8 @@ ASSETS_DIR = $(SRC_DIR)/assets
 ANIMATION_DIR = $(ASSETS_DIR)/frames
 INCLUDE_DIR = $(SRC_DIR)/include
 INSTALLER_DIR = ./install
-RELEASE_DIR = ./release/src
+RELEASE_DIR = ./release
+RELEASE_DIR_SRC = $(RELEASE_DIR)/src
 OUT_DIR = ./out
 
 # Source files
@@ -62,17 +63,17 @@ installer:
 
 # Copy release files
 copy:
-	@mkdir -p $(RELEASE_DIR)/img
-	cp ./WallCycle.exe $(RELEASE_DIR)
-	cp ./config.ini $(RELEASE_DIR)
-	cp ./README.md $(RELEASE_DIR)
-	cp -r ./img/* $(RELEASE_DIR)/img/
+	@mkdir -p $(RELEASE_DIR_SRC)/img
+	cp ./WallCycle.exe $(RELEASE_DIR_SRC)
+	cp ./config.ini $(RELEASE_DIR_SRC)
+	cp ./README.md $(RELEASE_DIR_SRC)
+	cp -r ./img/* $(RELEASE_DIR_SRC)/img/
 
 # Release task
-release: all copy installer
+release: animation all copy installer
 
 # Clean release output
-release-clean: clean
+release-clean: clean animation-clean
 	rm -rf $(RELEASE_DIR)
 
 # Generate animation icons and resources
