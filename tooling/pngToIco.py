@@ -55,7 +55,7 @@ def make_resources_rc(folder):
 
     with open(rc_file_path, "w") as f:
         f.write("#include \"resource.h\"\n\n")
-        f.write("ICON_ID ICON \"include/src/icon.ico\"\n\n")
+        f.write("ICON_ID ICON \"src/assets/icon.ico\"\n\n")
 
         for i, ico_file in enumerate(sorted(f for f in os.listdir(folder_path) if f.lower().endswith(".ico"))):
             relative_path = os.path.relpath(os.path.join(folder_path, ico_file), project_root).replace(os.sep, "/")

@@ -1,6 +1,6 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Iinclude -Wall -mwindows
+CFLAGS = -I$(INCLUDE_DIR) -Wall -mwindows
 
 # Resource compiler
 RC = windres
@@ -8,18 +8,24 @@ RC = windres
 # Libraries
 LIBS = -luser32 -lshell32 -lgdi32
 
+# Directories
+SRC_DIR = ./src
+ASSETS_DIR = $(SRC_DIR)/assets
+ANIMATION_DIR = $(ASSETS_DIR)/frames
+INCLUDE_DIR = $(SRC_DIR)/include
+INSTALLER_DIR = ./install
+RELEASE_DIR = ./release/src
+OUT_DIR = ./out
+
 # Source files
-SRCS = systray.c
-SRCS += $(wildcard include/*.c)
+SRCS = $(SRC_DIR)/systray.c
+SRCS += $(wildcard $(INCLUDE_DIR)/*.c)
 
 # Resource file
-RES = include/resource.rc
+RES = $(INCLUDE_DIR)/resource.rc
 
 # Output binary
 TARGET = WallCycle.exe
-
-# Output directory for build files
-OUT_DIR = ./out
 
 # Object files
 OBJS = $(SRCS:%.c=$(OUT_DIR)/%.o)
@@ -27,13 +33,7 @@ RES_OBJ = $(OUT_DIR)/resource.o
 
 # Installer
 CI = ISCC.exe
-ISRCS = ./install/installer.iss
-
-# Release directory
-RELEASE_DIR = ./release/src
-
-# Animation directory
-ANIMATION_DIR = ./include/src/Animation
+ISRCS = $(INSTALLER_DIR)/installer.iss
 
 # Default rule
 all: $(TARGET)
@@ -79,11 +79,11 @@ release-clean: clean
 animation:
 	source ./.venv/Scripts/activate && \
 	python ./tooling/pngToIco.py -c "#1E1E1E" -f $(ANIMATION_DIR) && \
-	mv $(ANIMATION_DIR)/resource.h ./include/resource.h && \
-	mv $(ANIMATION_DIR)/resource.rc ./include/resource.rc
+	mv $(ANIMATION_DIR)/resource.h $(INCLUDE_DIR)/resource.h && \
+	mv $(ANIMATION_DIR)/resource.rc $(INCLUDE_DIR)/resource.rc
 
 # Clean animation icons
 animation-clean:
 	rm -f $(ANIMATION_DIR)/*.ico
-	rm -f ./include/resource.h
-	rm -f ./include/resource.rc
+	rm -f $(INCLUDE_DIR)/resource.h
+	rm -f $(INCLUDE_DIR)/resource.rc
