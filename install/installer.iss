@@ -4,27 +4,22 @@
 #define MyAppName "WallCycle"
 #define MyAppVersion "00.01.00"
 #define MyAppExeName "WallCycle.exe"
+#define MyAppRoot ".." ; Relative path to the project root from this script
+#define MyAppOutDir "release"
 
 [Setup]
-; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
-; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{E6E5C51A-45C4-4FED-8048-B48123967A45}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-;AppVerName={#MyAppName} {#MyAppVersion}
 DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
-; Uncomment the following line to run in non administrative install mode (install for current user only.)
-;PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputDir=D:\Repos\background\release
+OutputDir={#MyAppOutDir}
 OutputBaseFilename=WallCycle_installer
-; SetupIconFile=D:\Repos\background\include\src\Icon.ico
-; !TODO: Set the icon file to include.
+SetupIconFile={#MyAppRoot}\src\assets\Icon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
-
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -33,10 +28,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "D:\Repos\background\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\Repos\background\config.ini"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\Repos\background\img\*"; DestDir: "{app}\img\"; Flags: ignoreversion recursesubdirs createallsubdirs
-; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+Source: "{#MyAppRoot}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppRoot}\config.ini"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppRoot}\img\*"; DestDir: "{app}\img\"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -44,4 +38,3 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-
